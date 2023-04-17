@@ -6,14 +6,14 @@ rm(list=ls())
 # Librerías 
 
 library(data.table) #para cargar la data
-library(ggplot2)
+library(ggplot2). # para graficar
 library(dplyr) # para transformar la data
 library(tidyr)# para transformar la data
 library(corrplot) 
-library(scales)
+library(scales) # para standarizar la data
 
 options(scipen=999) # evitar notacion cientifica
-set.seed(123) #para que todos tengamos el mismo sampleo
+#set.seed(123) #para que todos tengamos el mismo sampleo
 
 ## Funciones para cargar los datos
 
@@ -35,43 +35,43 @@ load_single_ads_file <- function(ads_file, sample_ratio = 1,
   
   return(dt)
 }
-
-
-# Carga múltiples archivos. En este caso, solo carga Enero 2020 pero deberían ver como cargar eficientemente todos los archivos
-load_competition_data <- function(comp_dir, sample_ratio = 1, limit_date,
-                                  drop_cols = NULL, sel_cols = NULL) {
-  
-  ads_data_AR_1 <- load_single_ads_file(paste0(DATA_PATH, "ads_data/2020_01_AR.txt"), sample_ratio)
-  ads_data_CO_1 <- load_single_ads_file(paste0(DATA_PATH, "ads_data/2020_01_CO.txt"), sample_ratio)
-  ads_data_EC_1 <- load_single_ads_file(paste0(DATA_PATH, "ads_data/2020_01_EC.txt"), sample_ratio)
-  ads_data_PE_1 <- load_single_ads_file(paste0(DATA_PATH, "ads_data/2020_01_PE.txt"), sample_ratio)
-  
-  ads_data <- rbind(ads_data_AR_1, ads_data_CO_1, ads_data_EC_1, ads_data_PE_1) #pegamos uno abajo del otro
-  ads_data$ad_id <- as.numeric(as.character(ads_data$ad_id)) 
-  
-  print("Loading and merging train contacts")
-  
-  contacts <- fread(paste0(DATA_PATH, "train_contacts.csv"), sep=",")
-  contacts$ad_id <- as.numeric(as.character(contacts$ad_id))
-  
-  ads_data <- merge(ads_data, contacts[,c("ad_id", "contacts")], by="ad_id", all.x=TRUE)
-  ads_data$contacts <- ifelse(!is.na(ads_data$contacts), ads_data$contacts, 0)# si hay NAs ponemos un 0
-  ads_data$contacts <- ifelse(ads_data$created_on < strptime(limit_date,
-                                                             format = "%Y-%m-%d",
-                                                             tz = "UTC"), #hasta que fecha cargamos
-                              ads_data$contacts, NA) 
-  return(ads_data)
-}
- 
-
 # Indicamos el path donde tenemos los archivos
 DATA_PATH <- "~/Documents/DITELLA/Mineria de Datos/competition_data/" 
- 
-# Usamos la función y cargamos todo Enero 2020
-ads_data <- load_competition_data(DATA_PATH, sample_ratio = 1,  limit_date = "2022-06-16")
- 
+
+#Campos que queremos mantener
+TO_KEEP <- c("ad_id", "operation", "place_l1", "lat", "lon",
+             "price_usd", "rooms", "surface_total", "property_type",
+             "created_on")
+
+# Cargamos todos los archivos
+countries <- c("AR", "CO", "EC", "PE")
+months <- c("01","02", "03", "04", "05", "06", "07", "08", "09","10", "11", "12" )
+years <- c("2020", "2021", "2022")
+
+ads_list <- list()
+for (year in years) {
+  for (month in months) {
+    for (country in countries) {
+      file_path <- paste0(DATA_PATH, "ads_data/",year, "_", month, "_", country, ".txt")
+      ads <- load_single_ads_file(file_path, sample_ratio = 1,sel_cols = TO_KEEP) # esta bien el sample ratio igual a  1? signiifca que tome todos ?
+      ads_list[[paste0("ads_", year, "_", month, "_", country)]] <- ads
+    }
+  }
+} 
+
+ads_data <- rbindlist(ads_list) # unimos los files 
+ads_data <- ads_data[created_on<"2022-06-15"] # filtramos por los menores a Junio 2022
+ads_data$ad_id <- as.numeric(as.character(ads_data$ad_id)) #Pasamos a numerico el ad_id de ads_data
+contacts <- fread(paste0(DATA_PATH, "train_contacts.csv"), sep=",") #Cargamos la data de los contactos
+contacts$ad_id <- as.numeric(as.character(contacts$ad_id)) #Pasamos a numerico el ad_id de contactos
+ads_data <- merge(ads_data, contacts[,c("ad_id", "contacts")], by="ad_id", all.x=TRUE) # Hacemos el join con la data de contactos
+ads_data$contacts <- ifelse(!is.na(ads_data$contacts), ads_data$contacts, 0)# si hay NAs ponemos un 0
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+#Hasta aca llegue preparando la data para empezar el analisis exploratorio
+-- --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 # Tomamos una muestra del 20% 
-ads_data_sample <- load_competition_data(DATA_PATH, sample_ratio = 0.2, limit_date = "2022-06-16")
+#ads_data_sample <- load_competition_data(DATA_PATH, sample_ratio = 0.2, limit_date = "2022-06-16")
  
 
 ## Análisis Exploratorio de los Datos (EDA)
