@@ -41,7 +41,7 @@ DATA_PATH <- "~/Documents/DITELLA/Mineria de Datos/competition_data/"
 #Campos que queremos mantener
 TO_KEEP <- c("ad_id", "operation", "place_l1", "lat", "lon",
              "price_usd", "rooms", "surface_total", "property_type",
-             "created_on")
+             "created_on","description")
 
 # Cargamos todos los archivos
 countries <- c("AR", "CO", "EC", "PE")
